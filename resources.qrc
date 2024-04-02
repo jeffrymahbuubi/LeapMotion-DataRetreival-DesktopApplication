@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="images">
+    <file>images/WTMH.png</file>
+    <file>images/Screenshot 2024-03-27 173518.png</file>
+  </qresource>
+</RCC>
