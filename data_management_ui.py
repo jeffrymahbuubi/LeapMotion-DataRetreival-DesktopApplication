@@ -8,6 +8,8 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
 )
 from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtGui import QPixmap
+from PySide6.QtCore import Qt
 
 
 class DataManagementUI(QObject):
@@ -81,6 +83,11 @@ class DataManagementUI(QObject):
             "device_2": 1,
             "device_3": 2,
         }
+
+        # Initialize the view labels
+        self.top_view_label = top_view_label
+        self.bottom_view_label = bottom_view_label
+        self.side_view_label = side_view_label
 
     ########################################################################################################
     # Device Connection Status Implementation
@@ -290,42 +297,32 @@ class DataManagementUI(QObject):
                 "Warning: Attempted to update a non-existent table. Check bone name mappings."
             )
 
-    # @Slot(list)
-    # def update_real_time_data(self, aggregatedData):
-    #     for data in aggregatedData:
-    #         self.update_single_data_item(data)
+    #######################################################################################################
+    # Real Time Skeleton View Implementation
+    #######################################################################################################
+    @Slot(dict)
+    def update_skeleton_view(self, data):
+        device_id = data["device_id"]
+        qimage = data["image"]
 
-    # def update_single_data_item(self, data):
-    #     finger_name = data.get("finger_name")
-    #     bone_name = data.get("bone_name")
-    #     device_id = data.get("device_id")
-    #     start_x = data.get("start_x")
+        # Determine which label to update based on the device_id
+        if device_id == self.top_device_id:
+            label_to_update = self.top_view_label
+        elif device_id == self.bottom_device_id:
+            label_to_update = self.bottom_view_label
+        elif device_id == self.side_device_id:
+            label_to_update = self.side_view_label
+        else:
+            print(f"Warning: Received data for unknown device ID '{device_id}'.")
+            return
 
-    #     row = self.finger_name_to_row.get(finger_name)
-    #     column = self.device_id_to_column.get(device_id)
-
-    #     if row is not None and column is not None:
-    #         if bone_name == "metacarpal":
-    #             table = self.metacarpal_table
-    #         elif bone_name == "proximal":
-    #             table = self.proximal_table
-    #         elif bone_name == "intermediate":
-    #             table = self.intermediate_table
-    #         elif bone_name == "distal":
-    #             table = self.distal_table
-    #         else:
-    #             print(f"Warning: Invalid bone name '{bone_name}'. Skipping update.")
-    #             return
-
-    #         # Check if the table and the cell exist
-    #         if table and row < table.rowCount() and column < table.columnCount():
-    #             table.setItem(row, column, QTableWidgetItem(str(start_x)))
-    #             print(
-    #                 f"Updated {bone_name} table, {finger_name} row, device {device_id} column with start_x: {start_x}"
-    #             )
-    #         else:
-    #             print("Warning: Attempted to update a non-existent cell.")
-    #     else:
-    #         print(
-    #             f"Warning: Invalid finger name '{finger_name}' or device ID '{device_id}'. Skipping update."
-    # )
+        # Update the QLabel with the new QImage
+        if label_to_update:
+            pixmap = QPixmap.fromImage(qimage)
+            label_to_update.setPixmap(
+                pixmap.scaled(
+                    label_to_update.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
+                )
+            )
+        else:
+            print(f"Error: No label available to update for device ID '{device_id}'.")

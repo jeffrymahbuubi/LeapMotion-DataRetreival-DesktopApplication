@@ -80,7 +80,7 @@ class TrackingEventListener(leap.Listener, QObject):
         self.hands_colour = (255, 255, 255)
         self.font_colour = (0, 255, 44)
         self.hands_format = "Skeleton"
-        self.output_image = {}
+        self.output_images = {}
         self.tracking_mode = None
 
     def number_of_devices_tracking(self):
@@ -105,8 +105,6 @@ class TrackingEventListener(leap.Listener, QObject):
                 else False
             ),
         )
-
-    
 
     ############################################################################################################
     # Skeleton Rendering Sending Signal

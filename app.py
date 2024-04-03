@@ -28,6 +28,9 @@ class Application(QMainWindow, Ui_MainWindow):
             self.proximal_table,
             self.intermediate_table,
             self.distal_table,
+            self.top_view_label,
+            self.bottom_view_label,
+            self.side_view_label,
         )
 
         # Start Leap Motion in a separate thread
@@ -57,6 +60,12 @@ class Application(QMainWindow, Ui_MainWindow):
         # Connect the realTimeDataUpdated signal to the DataManagementUI slot for real-time updates
         self.leapMotionWorker.tracking_listener.realTimeDataUpdated.connect(
             self.data_management_ui.update_real_time_data,
+            type=Qt.QueuedConnection,
+        )
+
+        # Connect the imageUpdated signal to update the skeleton view in the UI
+        self.leapMotionWorker.tracking_listener.imageUpdated.connect(
+            self.data_management_ui.update_skeleton_view,
             type=Qt.QueuedConnection,
         )
 
