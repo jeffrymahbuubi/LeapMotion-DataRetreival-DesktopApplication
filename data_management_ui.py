@@ -31,6 +31,9 @@ class DataManagementUI(QObject):
         proximal_table: QTableWidget,
         intermediate_table: QTableWidget,
         distal_table: QTableWidget,
+        top_view_label: QLabel,
+        bottom_view_label: QLabel,
+        side_view_label: QLabel,
     ):
         # Initialize QObject
         QObject.__init__(self)  # Initialize QObject
