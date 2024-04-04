@@ -14,9 +14,11 @@ _TRACKING_MODES = {leap.TrackingMode.Desktop: "Desktop"}
 def cv2_to_qimage(cv_img):
     height, width, channel = cv_img.shape
     bytes_per_line = 3 * width
-    return QImage(
+    qimage = QImage(
         cv_img.data, width, height, bytes_per_line, QImage.Format.Format_RGB888
     ).rgbSwapped()
+
+    return qimage
 
 
 class TrackingEventListener(leap.Listener):

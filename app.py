@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QMainWindow, QApplication
 import sys
 from PySide6.QtGui import QIcon
-from leapmotion_ver2 import Ui_MainWindow
+from leapmotion_ver3 import Ui_MainWindow
 from data_management_ui import DataManagementUI
 from leapmotion_logic import TrackingEventListener, LeapMotionWorker
 from PySide6.QtCore import QThread, Qt
@@ -28,6 +28,9 @@ class Application(QMainWindow, Ui_MainWindow):
             self.proximal_table,
             self.intermediate_table,
             self.distal_table,
+            self.top_view_label,
+            self.bottom_view_label,
+            self.side_view_label,
         )
 
         # Start Leap Motion in a separate thread
@@ -60,6 +63,13 @@ class Application(QMainWindow, Ui_MainWindow):
             type=Qt.QueuedConnection,
         )
 
+        print("Connecting imageUpdated signal to update_skeleton_view slot.")
+        # Connect the imageUpdated signal to update the skeleton view in the UI
+        self.leapMotionWorker.tracking_listener.imageUpdated.connect(
+            self.data_management_ui.update_skeleton_view,
+            type=Qt.QueuedConnection,
+        )
+
         self.thread.started.connect(self.leapMotionWorker.run)
         self.leapMotionWorker.finished.connect(self.thread.quit)
         self.thread.start()
@@ -76,8 +86,6 @@ class Application(QMainWindow, Ui_MainWindow):
 
 
 app = QApplication(sys.argv)
-
 window = Application()
-
 window.show()
 app.exec()
