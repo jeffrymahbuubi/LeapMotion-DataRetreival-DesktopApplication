@@ -3,7 +3,7 @@ import time
 from timeit import default_timer as timer
 from typing import Callable
 from PySide6.QtCore import QObject, Signal, Slot
-from PyQt6.QtGui import QImage
+from PySide6.QtGui import QPixmap, QImage
 from datetime import datetime
 import pandas as pd
 import numpy as np
@@ -16,9 +16,11 @@ _TRACKING_MODES = {leap.TrackingMode.Desktop: "Desktop"}
 def cv2_to_qimage(cv_img):
     height, width, channel = cv_img.shape
     bytes_per_line = 3 * width
-    return QImage(
+    qimage = QImage(
         cv_img.data, width, height, bytes_per_line, QImage.Format.Format_RGB888
     ).rgbSwapped()
+
+    return qimage
 
 
 class MultiDeviceListener(leap.Listener):
@@ -126,27 +128,19 @@ class TrackingEventListener(leap.Listener, QObject):
             return None
 
     def render_hands(self, event):
+        print("Entered render_hands")  # Debug print
         device_id = event.metadata.device_id
+        print(f"Rendering hands for device_id: {device_id}")
 
-        # Ensure there's an output_image buffer for the current device
+        # Correctly initialize an entry for device_id if it doesn't exist
         if device_id not in self.output_images:
             self.output_images[device_id] = np.zeros(
                 (self.screen_size[0], self.screen_size[1], 3), np.uint8
             )
 
-        # Use the specific output_image for the current device
+        # Now it's safe to access output_image, since we've ensured its initialization
         output_image = self.output_images[device_id]
-        output_image[:, :] = 0  # Clear the previous image
-
-        cv2.putText(
-            output_image,
-            f"Tracking Mode: {_TRACKING_MODES[self.tracking_mode]}",
-            (10, self.screen_size[0] - 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            self.font_colour,
-            1,
-        )
+        output_image.fill(0)  # Clear the image
 
         if len(event.hands) == 0:
             return
@@ -200,10 +194,14 @@ class TrackingEventListener(leap.Listener, QObject):
                     if index_bone == 0 and bone_start and wrist:
                         cv2.line(output_image, bone_start, wrist, self.hands_colour, 2)
 
-                    qimage = cv2_to_qimage(
-                        output_image
-                    )  # Convert numpy image to QImage
-                    self.imageUpdated.emit({"device_id": device_id, "image": qimage})
+    def emit_images_for_all_devices(self):
+        for device_id, image in self.output_images.items():
+            qimage = cv2_to_qimage(image)
+            if not qimage.isNull():
+                print(f"Emitting imageUpdated signal for device_id: {device_id}")
+                self.imageUpdated.emit({"device_id": device_id, "image": qimage})
+            else:
+                print(f"Failed to create a valid QImage for device_id: {device_id}")
 
     # Event handling methods
     def on_tracking_mode_event(self, event):
@@ -215,7 +213,7 @@ class TrackingEventListener(leap.Listener, QObject):
 
     @Slot(bool)
     def toggle_recording_slot(self, is_recording_tracking):
-        print(f"Before toggle, recording status: {self.is_recording_tracking}")
+        # print(f"Before toggle, recording status: {self.is_recording_tracking}")
         if self.is_recording_tracking and not is_recording_tracking:
             # If we're stopping the recording, save the data
             self.save_coordinates_to_csv(self.bone_coordinates)
@@ -230,18 +228,18 @@ class TrackingEventListener(leap.Listener, QObject):
             self.start_time = None
             self.collecting_data = False
         self.is_recording_tracking = is_recording_tracking
-        print(f"After toggle, recording status: {self.is_recording_tracking}")
+        # print(f"After toggle, recording status: {self.is_recording_tracking}")
 
     def on_tracking_event(self, event):
-        print(
-            f"Debug: on_tracking_event called BEFORE is_recording_tracking toggled = {self.is_recording_tracking}"
-        )
+        # print(
+        #     f"Debug: on_tracking_event called BEFORE is_recording_tracking toggled = {self.is_recording_tracking}"
+        # )
         # 0. Check if recording should be active
         if self.is_recording_tracking == False:
             return
-        print(
-            f"Debug: on_tracking_event called AFTER is_recording_tracking toggled = {self.is_recording_tracking}"
-        )
+        # print(
+        #     f"Debug: on_tracking_event called AFTER is_recording_tracking toggled = {self.is_recording_tracking}"
+        # )
 
         # 1. Detect hand and start collecting data after 3 seconds
         if not self.start_time and len(event.hands) > 0:
@@ -260,8 +258,9 @@ class TrackingEventListener(leap.Listener, QObject):
 
         # 3. Collect data every 2 frames
         if self.collecting_data and event.tracking_frame_id % 2 == 0:
-            # Call the render_hands method to render the skeleton on the image
+
             self.render_hands(event)
+            self.emit_images_for_all_devices()
 
             # Get the device identifier
             device_id = event.metadata.device_id

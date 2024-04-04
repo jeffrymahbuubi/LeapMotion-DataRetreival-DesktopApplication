@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
 )
 from PySide6.QtCore import QObject, Signal, Slot
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QImage
 from PySide6.QtCore import Qt
 
 
@@ -70,19 +70,6 @@ class DataManagementUI(QObject):
         self.proximal_table = proximal_table
         self.intermediate_table = intermediate_table
         self.distal_table = distal_table
-
-        self.finger_name_to_row = {
-            "thumb": 0,
-            "index": 1,
-            "middle": 2,
-            "ring": 3,
-            "pinky": 4,
-        }
-        self.device_id_to_column = {
-            "device_1": 0,
-            "device_2": 1,
-            "device_3": 2,
-        }
 
         # Initialize the view labels
         self.top_view_label = top_view_label
@@ -162,14 +149,14 @@ class DataManagementUI(QObject):
         name = self.name_for_csv.text().strip()
         id = self.id_for_csv.text().strip()
 
-        if not all_devices_connected:
-            # Show message box if not all devices are connected
-            QMessageBox.warning(
-                None,  # Changed this to None for a standalone message box
-                "Device Connection Required",
-                "All devices must be connected before recording can start. Please connect all devices.",
-            )
-            return
+        # if not all_devices_connected:
+        #     # Show message box if not all devices are connected
+        #     QMessageBox.warning(
+        #         None,  # Changed this to None for a standalone message box
+        #         "Device Connection Required",
+        #         "All devices must be connected before recording can start. Please connect all devices.",
+        #     )
+        #     return
 
         if not name or not id:
             # Show message box if name or ID is missing
@@ -183,17 +170,17 @@ class DataManagementUI(QObject):
         # Toggle the recording state BEFORE emitting the signal
         self.is_recording_ui = not self.is_recording_ui
 
-        print(f"Before emitting signal: {self.is_recording_ui}")
+        # print(f"Before emitting signal: {self.is_recording_ui}")
         self.toggleRecordingSignal.emit(self.is_recording_ui)
-        print("Signal emitted.")
+        # print("Signal emitted.")
 
         self.update_record_button_ui(self.is_recording_ui)
 
         # Emit the userInfoSubmitted signal when recording starts
         if self.is_recording_ui:
-            print(
-                "Debug: Record button clicked. Checking connections and emitting user info."
-            )
+            # print(
+            #     "Debug: Record button clicked. Checking connections and emitting user info."
+            # )
             self.emit_user_info()
 
     def update_record_button_ui(self, is_recording_ui):
@@ -231,7 +218,7 @@ class DataManagementUI(QObject):
         date = self.date_for_csv.date().toString("yyyyMMdd")
 
         # Debug output when user info is emitted
-        print(f"Debug: Emitting user info - Name: {name}, ID: {id}, Date: {date}")
+        # print(f"Debug: Emitting user info - Name: {name}, ID: {id}, Date: {date}")
         self.userInfoSubmitted.emit(name, id, date)
 
     #######################################################################################################
@@ -288,10 +275,10 @@ class DataManagementUI(QObject):
             # Update the table item
             table.setItem(row, column, QTableWidgetItem(str(start_x)))
 
-            # Debug print to confirm the update
-            print(
-                f"Updated {bone_name} table, {finger_name} row, device {device_id} column with start_x: {start_x}"
-            )
+            # # Debug print to confirm the update
+            # print(
+            #     f"Updated {bone_name} table, {finger_name} row, device {device_id} column with start_x: {start_x}"
+            # )
         else:
             print(
                 "Warning: Attempted to update a non-existent table. Check bone name mappings."
@@ -302,21 +289,31 @@ class DataManagementUI(QObject):
     #######################################################################################################
     @Slot(dict)
     def update_skeleton_view(self, data):
+        print("Received skeleton view update signal.")  # Debug print
+        print(f"Data received: {data}")
         device_id = data["device_id"]
         qimage = data["image"]
 
-        # Determine which label to update based on the device_id
-        if device_id == self.top_device_id:
-            label_to_update = self.top_view_label
-        elif device_id == self.bottom_device_id:
-            label_to_update = self.bottom_view_label
-        elif device_id == self.side_device_id:
-            label_to_update = self.side_view_label
-        else:
-            print(f"Warning: Received data for unknown device ID '{device_id}'.")
-            return
+        # if not isinstance(qimage, QImage):
+        #     print("Error: The provided image is not a valid QImage.")
+        #     return
 
-        # Update the QLabel with the new QImage
+        print(
+            f"Attempting to update view for device_id: {device_id}"
+        )  # More detailed debug print
+
+        # Mapping device_ids to view labels
+        device_id_to_label = {
+            "device_1": self.top_view_label,
+            "device_2": self.bottom_view_label,
+            "device_3": self.side_view_label,
+        }
+
+        # Convert numerical device_id to string format expected by device_id_to_label
+        device_id_str = f"device_{device_id}"
+
+        label_to_update = device_id_to_label.get(device_id_str)
+
         if label_to_update:
             pixmap = QPixmap.fromImage(qimage)
             label_to_update.setPixmap(
@@ -324,5 +321,8 @@ class DataManagementUI(QObject):
                     label_to_update.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
                 )
             )
+            print(
+                f"Updated view for device ID '{device_id_str}'."
+            )  # Confirm successful update
         else:
-            print(f"Error: No label available to update for device ID '{device_id}'.")
+            print(f"Warning: Received data for unknown device ID '{device_id_str}'.")

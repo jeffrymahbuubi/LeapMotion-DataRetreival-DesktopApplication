@@ -63,6 +63,7 @@ class Application(QMainWindow, Ui_MainWindow):
             type=Qt.QueuedConnection,
         )
 
+        print("Connecting imageUpdated signal to update_skeleton_view slot.")
         # Connect the imageUpdated signal to update the skeleton view in the UI
         self.leapMotionWorker.tracking_listener.imageUpdated.connect(
             self.data_management_ui.update_skeleton_view,
@@ -85,8 +86,6 @@ class Application(QMainWindow, Ui_MainWindow):
 
 
 app = QApplication(sys.argv)
-
 window = Application()
-
 window.show()
 app.exec()

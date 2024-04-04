@@ -396,7 +396,7 @@ class Ui_MainWindow(object):
         font9 = QFont()
         font9.setFamilies(["Lato"])
         font9.setPointSize(9)
-        self.metacarpal_table.setFont(font9)
+        self.proximal_table.setFont(font9)
 
         # Configure header properties
         self.proximal_table.horizontalHeader().setMinimumSectionSize(32)
