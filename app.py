@@ -1,10 +1,10 @@
 from PySide6.QtWidgets import QMainWindow, QApplication
-import sys
+from PySide6.QtCore import QThread, Qt
 from PySide6.QtGui import QIcon
+import sys
 from leapmotion_ver3 import Ui_MainWindow
 from data_management_ui import DataManagementUI
 from leapmotion_logic import TrackingEventListener, LeapMotionWorker
-from PySide6.QtCore import QThread, Qt
 
 
 class Application(QMainWindow, Ui_MainWindow):

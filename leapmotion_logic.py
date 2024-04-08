@@ -1,9 +1,9 @@
+from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtGui import QPixmap, QImage
 import leap
 import time
 from timeit import default_timer as timer
 from typing import Callable
-from PySide6.QtCore import QObject, Signal, Slot
-from PySide6.QtGui import QPixmap, QImage
 from datetime import datetime
 import pandas as pd
 import numpy as np
@@ -231,9 +231,9 @@ class TrackingEventListener(leap.Listener, QObject):
         # print(f"After toggle, recording status: {self.is_recording_tracking}")
 
     def on_tracking_event(self, event):
-        # print(
-        #     f"Debug: on_tracking_event called BEFORE is_recording_tracking toggled = {self.is_recording_tracking}"
-        # )
+        print(
+            f"Debug: on_tracking_event called BEFORE is_recording_tracking toggled = {self.is_recording_tracking}"
+        )
         # 0. Check if recording should be active
         if self.is_recording_tracking == False:
             return

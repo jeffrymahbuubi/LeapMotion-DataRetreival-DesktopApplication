@@ -1,9 +1,9 @@
-import leap
-import numpy as np
-import cv2
 from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout
 from PyQt6.QtGui import QPixmap, QImage
 from PyQt6.QtCore import QThread, pyqtSignal
+import leap
+import numpy as np
+import cv2
 import sys
 
 
