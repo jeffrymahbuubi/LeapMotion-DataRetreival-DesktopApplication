@@ -9,8 +9,6 @@ import pandas as pd
 import numpy as np
 import cv2
 
-_TRACKING_MODES = {leap.TrackingMode.Desktop: "Desktop"}
-
 
 # This function converts an OpenCV image to QImage format
 def cv2_to_qimage(cv_img):
@@ -84,6 +82,11 @@ class TrackingEventListener(leap.Listener, QObject):
         self.hands_format = "Skeleton"
         self.output_images = {}
         self.tracking_mode = None
+
+        # Frequency of sending real-time data
+        self.last_sample_time = time.time()
+        self.sampling_rate_hz = 42
+        self.desired_interval = 1.0 / self.sampling_rate_hz
 
     def number_of_devices_tracking(self):
         return len(self.device_latest_tracking_event)
@@ -232,93 +235,81 @@ class TrackingEventListener(leap.Listener, QObject):
 
     def on_tracking_event(self, event):
         print(
-            f"Debug: on_tracking_event called BEFORE is_recording_tracking toggled = {self.is_recording_tracking}"
+            f"Debug: on_tracking_event called with recording status = {self.is_recording_tracking}"
         )
-        # 0. Check if recording should be active
-        if self.is_recording_tracking == False:
-            return
-        # print(
-        #     f"Debug: on_tracking_event called AFTER is_recording_tracking toggled = {self.is_recording_tracking}"
-        # )
 
-        # 1. Detect hand and start collecting data after 3 seconds
+        # Check if recording should be active
+        if not self.is_recording_tracking:
+            return
+
+        current_time = time.time()
+
+        # Detect hand and start collecting data after 3 seconds
         if not self.start_time and len(event.hands) > 0:
             print("Hand detected. Will start collecting data...")
-            self.start_time = timer()
+            self.start_time = current_time
 
-        # 2. Start collecting data after 3 seconds
+        # Start collecting data after 3 seconds
         if self.start_time and not self.collecting_data:
-            elapsed_time = timer() - self.start_time
+            elapsed_time = current_time - self.start_time
             if elapsed_time >= 3:
                 self.collecting_data = True
-                for i in range(3, 0, -1):
-                    print(f"Start in {i}")
-                    time.sleep(1)
                 print("Start rendering hands")
 
-        # 3. Collect data every 2 frames
-        if self.collecting_data and event.tracking_frame_id % 2 == 0:
+        # Collect data based on the desired time interval (for 42Hz, interval is ~0.0238 seconds)
+        desired_interval = 1 / 42.0  # Approximate interval for 42Hz
+        if (
+            self.collecting_data
+            and (current_time - self.last_sample_time) >= desired_interval
+        ):
+            self.last_sample_time = current_time  # Update the last sample time
 
             self.render_hands(event)
             self.emit_images_for_all_devices()
 
-            # Get the device identifier
+            # Sample data collection logic
             device_id = event.metadata.device_id
-
+            device_identifier = self.device_mappings.get(
+                device_id, f"device_{self.device_counter}"
+            )
             if device_id not in self.device_mappings:
-                self.device_mappings[device_id] = f"device_{self.device_counter}"
+                self.device_mappings[device_id] = device_identifier
                 self.device_counter += 1
 
-            device_identifier = self.device_mappings[device_id]
-
-            # Get the timestamp
             timestamp = datetime.now().strftime("%H:%M:%S")
+            self.collect_and_emit_data(event, timestamp, device_identifier)
 
-            for hand in event.hands:
-                for index_digit, digit in enumerate(hand.digits):
-                    finger_name = self.finger_names[index_digit]
-                    for index_bone, bone in enumerate(digit.bones):
-                        bone_name = self.bone_names[index_bone]
-                        key = (
-                            timestamp,
-                            bone_name,
-                        )
-                        if key not in self.bone_coordinates:
-                            self.bone_coordinates[key] = {
-                                "timestamp": timestamp,
-                                "bone_index": bone_name,
-                            }
-                        self.bone_coordinates[key].update(
-                            {
-                                f"{finger_name}_start_x_{device_identifier}": bone.prev_joint.x,
-                                f"{finger_name}_start_y_{device_identifier}": bone.prev_joint.y,
-                                f"{finger_name}_start_z_{device_identifier}": bone.prev_joint.z,
-                                f"{finger_name}_end_x_{device_identifier}": bone.next_joint.x,
-                                f"{finger_name}_end_y_{device_identifier}": bone.next_joint.y,
-                                f"{finger_name}_end_z_{device_identifier}": bone.next_joint.z,
-                            }
-                        )
-
-                        # print(
-                        #     f"Device: {device_id}   Bone {self.bone_names[index_bone]} of Digit {self.finger_names[index_digit]} Prev Joint Position: {bone.prev_joint.x, bone.prev_joint.y, bone.prev_joint.z}, Next Joint Position: {bone.next_joint.x, bone.next_joint.y, bone.next_joint.z}"
-                        # )
-
-                        # Populate real_time_ui_data for UI updates and format start_x
-                        if device_identifier not in self.real_time_ui_data:
-                            self.real_time_ui_data[device_identifier] = {}
-                        if finger_name not in self.real_time_ui_data[device_identifier]:
-                            self.real_time_ui_data[device_identifier][finger_name] = {}
-                        self.real_time_ui_data[device_identifier][finger_name][
-                            bone_name
-                        ] = f"{bone.prev_joint.x:.2f}"
-
-                        data = {
-                            "finger_name": finger_name,
-                            "bone_name": bone_name,
-                            "device_id": device_identifier,
-                            "start_x": f"{bone.prev_joint.x:.2f}",
+    def collect_and_emit_data(self, event, timestamp, device_identifier):
+        for hand in event.hands:
+            for index_digit, digit in enumerate(hand.digits):
+                finger_name = self.finger_names[index_digit]
+                for index_bone, bone in enumerate(digit.bones):
+                    bone_name = self.bone_names[index_bone]
+                    key = (timestamp, bone_name)
+                    if key not in self.bone_coordinates:
+                        self.bone_coordinates[key] = {
+                            "timestamp": timestamp,
+                            "bone_index": bone_name,
                         }
-                        self.realTimeDataUpdated.emit(data)
+                    self.bone_coordinates[key].update(
+                        {
+                            f"{finger_name}_start_x_{device_identifier}": bone.prev_joint.x,
+                            f"{finger_name}_start_y_{device_identifier}": bone.prev_joint.y,
+                            f"{finger_name}_start_z_{device_identifier}": bone.prev_joint.z,
+                            f"{finger_name}_end_x_{device_identifier}": bone.next_joint.x,
+                            f"{finger_name}_end_y_{device_identifier}": bone.next_joint.y,
+                            f"{finger_name}_end_z_{device_identifier}": bone.next_joint.z,
+                        }
+                    )
+
+                    # Prepare data for real-time UI update and emit signal
+                    data = {
+                        "finger_name": finger_name,
+                        "bone_name": bone_name,
+                        "device_id": device_identifier,
+                        "start_x": f"{bone.prev_joint.x:.2f}",
+                    }
+                    self.realTimeDataUpdated.emit(data)
 
     ############################################################################################################
     # File Information Receive Slot
@@ -367,7 +358,7 @@ class LeapMotionWorker(QObject):
 
         try:
             with connection.open():
-                wait_until(lambda: self.device_listener.n_events > 0)
+                wait_until(lambda: self.device_listener.n_events == 3, timeout=1000)
                 get_updated_devices(connection)
 
                 # Initial check before entering the loop

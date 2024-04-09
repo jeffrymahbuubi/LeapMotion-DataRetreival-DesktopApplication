@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QMainWindow, QApplication
-from PySide6.QtCore import QThread, Qt
+from PySide6.QtCore import QThread, Qt, QTimer
 from PySide6.QtGui import QIcon
 import sys
 from leapmotion_ver3 import Ui_MainWindow
@@ -13,9 +13,21 @@ class Application(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.setWindowTitle("Leap Motion Gemini V1.0")
         self.setWindowIcon(QIcon("images/WTMH.ico"))
+
+        # Delay further initialization
+        QTimer.singleShot(2000, self.delayedInit)  # Delay of 1000 ms (1 second)
+
+    def delayedInit(self):
+        # This method will be called after the specified delay
         self.tracking_listener = TrackingEventListener()
 
-        # Assuming you have a method or properties to initialize labels and buttons
+        # Setup DataManagementUI and connections
+        self.setupDataManagementUI()
+
+        # Start Leap Motion in a separate thread
+        self.start_leap_motion_thread()
+
+    def setupDataManagementUI(self):
         self.data_management_ui = DataManagementUI(
             self.device_top_status,
             self.device_bottom_status,
@@ -32,9 +44,6 @@ class Application(QMainWindow, Ui_MainWindow):
             self.bottom_view_label,
             self.side_view_label,
         )
-
-        # Start Leap Motion in a separate thread
-        self.start_leap_motion_thread()
 
     def start_leap_motion_thread(self):
         self.thread = QThread()
