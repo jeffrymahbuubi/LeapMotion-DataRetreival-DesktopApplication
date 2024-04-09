@@ -1,10 +1,15 @@
-from PySide6.QtWidgets import QMainWindow, QApplication
-from PySide6.QtCore import QThread, Qt, QTimer
-from PySide6.QtGui import QIcon
-import sys
-from leapmotion_ver3 import Ui_MainWindow
-from data_management_ui import DataManagementUI
 from leapmotion_logic import TrackingEventListener, LeapMotionWorker
+from PySide6.QtWidgets import QMainWindow, QApplication
+from data_management_ui import DataManagementUI
+from PySide6.QtCore import QThread, Qt, QTimer
+from leapmotion_ver3 import Ui_MainWindow
+from PySide6.QtGui import QIcon
+import traceback
+import sys
+import os
+
+basedir = os.path.dirname(__file__)
+print(basedir)
 
 
 class Application(QMainWindow, Ui_MainWindow):
@@ -12,7 +17,7 @@ class Application(QMainWindow, Ui_MainWindow):
         super().__init__()
         self.setupUi(self)
         self.setWindowTitle("Leap Motion Gemini V1.0")
-        self.setWindowIcon(QIcon("images/WTMH.ico"))
+        self.setWindowIcon(QIcon(os.path.join(basedir, "images", "icon.png")))
 
         # Delay further initialization
         QTimer.singleShot(2000, self.delayedInit)  # Delay of 1000 ms (1 second)
